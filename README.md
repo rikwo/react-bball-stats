@@ -1,0 +1,1 @@
+A web version of the stats app. Allows individual to track points, rebounds, assists, steals, blocks, and turnovers of a single player. Best use for family and friends of players who want to track their in game stats across seasons and teams.
