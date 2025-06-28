@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import {useEffect, useState} from 'react'
 import './App.css'
 
 function App() {
@@ -12,6 +12,20 @@ function App() {
   const [isHalf, setIsHalf] = useState(true);
   const [pins, setPins] = useState([]);
   const [date, setDate] = useState(Date.now());
+  const [half, setHalf] = useState(1);
+  const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+      let interval = null;
+      if (isRunning && time > 0) {
+          interval = setInterval(() => {
+              setTime(prevTime => prevTime - 1);
+          }, 1000);
+      } else {
+          clearInterval(interval);
+      }
+      return () => clearInterval(interval);
+  }, [isRunning, time])
 
   const formatDate = (timestamp) => {
       const d = new Date(timestamp);
@@ -24,6 +38,12 @@ function App() {
       const [pins, setPins] = useState([]);
 
       return `${year}-${month}-${day} ${hours}:${minutes}`;
+  }
+
+  const formatTime = (seconds) => {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      return `${min}:${String(sec).padStart(2, '0')}`;
   }
 
   const handleCourtClick = (e) => {
@@ -43,7 +63,7 @@ function App() {
           return;
       }
 
-      const newPin = { x, y, statType, amount };
+      const newPin = { x, y, statType, amount, time, half};
       setPins(prev => [...prev, newPin]);
 
       switch (statType) {
@@ -57,10 +77,26 @@ function App() {
       }
   }
 
-  return (
+    function changeHalf() {
+        if (isHalf) {
+            setIsHalf(false);
+        } else {
+            setIsHalf(true);
+        }
+    }
+
+    return (
       <div>
           <h2>Game - {formatDate(date)}</h2>
-          <h3>0:00</h3>
+          <div style={{display: 'flex',justifyContent: 'center', alignItems: 'center', gap: '10px'}}>
+            <h3>{formatTime(time)}</h3>
+              {isRunning ? (
+                  <button onClick={() => setIsRunning(false)}>Pause</button>
+              ) : (
+                  <button onClick={() => setIsRunning(true)}>Play</button>
+              )}
+          </div>
+          <button onClick={changeHalf}>{isHalf ? "Change to quarters" : "Change to halves"}</button>
           <div style={{ display: 'flex', height: '500px' }}>
               <div style={{ flex: 1, position: 'relative' }}>
                   <img
@@ -93,6 +129,14 @@ function App() {
                   <p>Steals: {steals}</p>
                   <p>Blocks: {blocks}</p>
                   <p>Turnovers: {turnovers}</p>
+                  <h4>Event List:</h4>
+                  <ul style={{maxHeight: '300px', overflowY: 'auto'}}>
+                    {pins.map((pin, index) => (
+                        <li key={index}>
+                            {pin.statType} (+{pin.amount})
+                        </li>
+                      ))}
+                  </ul>
               </div>
           </div>
       </div>
