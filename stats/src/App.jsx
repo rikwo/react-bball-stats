@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
 import { createPortal } from 'react-dom';
+import { v4 as uuidv4 } from 'uuid';
 import './App.css'
 
 function App() {
@@ -9,7 +10,7 @@ function App() {
   const [steals, setSteals] = useState(0);
   const [blocks, setBlocks] = useState(0);
   const [turnovers, setTurnovers] = useState(0);
-  const [time, setTime] = useState(600);
+  const [time, setTime] = useState(10);
   const [isHalf, setIsHalf] = useState(true);
   const [pins, setPins] = useState([]);
   const [date, setDate] = useState(Date.now());
@@ -24,6 +25,11 @@ function App() {
           }, 1000);
       } else {
           clearInterval(interval);
+          if((isHalf && half < 2) || (!isHalf && half < 4)) {
+              setHalf(half + 1);
+              setIsRunning(false);
+              setTime(10);
+          }
       }
       return () => clearInterval(interval);
   }, [isRunning, time])
@@ -48,11 +54,13 @@ function App() {
   }
 
   const handleCourtClick = (e) => {
+      if (time == 0) {
+          return;
+      }
       const court = e.target.getBoundingClientRect();
       const x = ((e.clientX - court.left) / court.width) * 100;
       const y = ((e.clientY - court.top) / court.height) * 100;
 
-      const portal = createPortal()
 
       const statType = prompt('Mark as: points, rebounds, assists, steals, blocks, turnovers?').toLowerCase();
       if (!['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers'].includes(statType)) {
@@ -66,7 +74,7 @@ function App() {
           return;
       }
 
-      const newPin = { x, y, statType, amount, time, half};
+      const newPin = { id: uuidv4(), x, y, statType, amount, time, half};
       setPins(prev => [...prev, newPin]);
 
       switch (statType) {
@@ -77,6 +85,17 @@ function App() {
           case 'blocks': setBlocks(b => b + amount); break;
           case 'turnovers': setTurnovers(t => t + amount); break;
           default: break;
+      }
+  }
+
+  const TimerPrompt= (e) => {
+      const customTime = prompt("Set game clock");
+      const parsedTime = parseInt(customTime, 10);
+
+      if (!isNaN(parsedTime) && parsedTime >= 0) {
+          setTime(parsedTime);
+      } else {
+          alert("Please enter a valid non-negative number.");
       }
   }
 
@@ -91,7 +110,9 @@ function App() {
     return (
       <div>
           <h2>Game - {formatDate(date)}</h2>
+          <h3>{isHalf? `Half - ${half}` : `Quarter - ${half}`}</h3>
           <div style={{display: 'flex',justifyContent: 'center', alignItems: 'center', gap: '10px'}}>
+              <button onClick={TimerPrompt}>Set Game Clock</button>
             <h3>{formatTime(time)}</h3>
               {isRunning ? (
                   <button onClick={() => setIsRunning(false)}>Pause</button>
@@ -101,16 +122,15 @@ function App() {
           </div>
           <button onClick={changeHalf}>{isHalf ? "Change to quarters" : "Change to halves"}</button>
           <div style={{ display: 'flex', height: '500px' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
+              <div style={{ flex: 1, position: 'relative' }} onClick={handleCourtClick}>
                   <img
                       src="court.png"
                       alt="court"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onClick={handleCourtClick}
                   />
                   {pins.map((pin, index) => (
                       <div
-                          key={index}
+                          key={pin.id}
                           style={{
                               position: 'absolute',
                               top: `${pin.y}%`,
