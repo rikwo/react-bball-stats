@@ -1,4 +1,5 @@
 import {useEffect, useState} from 'react'
+import { createPortal } from 'react-dom';
 import './App.css'
 
 function App() {
@@ -50,6 +51,8 @@ function App() {
       const court = e.target.getBoundingClientRect();
       const x = ((e.clientX - court.left) / court.width) * 100;
       const y = ((e.clientY - court.top) / court.height) * 100;
+
+      const portal = createPortal()
 
       const statType = prompt('Mark as: points, rebounds, assists, steals, blocks, turnovers?').toLowerCase();
       if (!['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers'].includes(statType)) {
