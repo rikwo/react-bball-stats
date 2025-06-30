@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react'
 import { createPortal } from 'react-dom';
 import { v4 as uuidv4 } from 'uuid';
+import EventModal from './EventModal.jsx';
 import './App.css'
 
 function App() {
@@ -16,6 +17,10 @@ function App() {
   const [date, setDate] = useState(Date.now());
   const [half, setHalf] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedStat, setSelectedStat] = useState('');
+  const [pointAmount, setPointAmount] = useState(1);
+  const [clickPos, setClickPos] = useState(null);
 
   useEffect(() => {
       let interval = null;
@@ -42,8 +47,6 @@ function App() {
       const hours = String(d.getHours()).padStart(2, '0');
       const minutes = String(d.getMinutes()).padStart(2, '0');
 
-      const [pins, setPins] = useState([]);
-
       return `${year}-${month}-${day} ${hours}:${minutes}`;
   }
 
@@ -53,40 +56,44 @@ function App() {
       return `${min}:${String(sec).padStart(2, '0')}`;
   }
 
-  const handleCourtClick = (e) => {
-      if (time == 0) {
-          return;
-      }
-      const court = e.target.getBoundingClientRect();
-      const x = ((e.clientX - court.left) / court.width) * 100;
-      const y = ((e.clientY - court.top) / court.height) * 100;
+    const handleConfirmEvent = () => {
+        if (!clickPos || time === 0) return;
 
+        if (!selectedStat) {
+            alert('Please select a stat type.');
+            return;
+        }
 
-      const statType = prompt('Mark as: points, rebounds, assists, steals, blocks, turnovers?').toLowerCase();
-      if (!['points', 'rebounds', 'assists', 'steals', 'blocks', 'turnovers'].includes(statType)) {
-          alert('Invalid stat type');
-          return;
-      }
+        const amount = selectedStat === 'points' ? pointAmount : 1;
 
-      const amount = parseInt(prompt(`How many ${statType}?`), 10);
-      if (isNaN(amount) || amount <= 0) {
-          alert('Invalid amount');
-          return;
-      }
+        const newPin = {
+            id: uuidv4(),
+            x: clickPos.x,
+            y: clickPos.y,
+            statType: selectedStat,
+            amount,
+            time,
+            half,
+        };
 
-      const newPin = { id: uuidv4(), x, y, statType, amount, time, half};
-      setPins(prev => [...prev, newPin]);
+        setPins(prev => [...prev, newPin]);
 
-      switch (statType) {
-          case 'points': setPoints(p => p + amount); break;
-          case 'rebounds': setRebounds(r => r + amount); break;
-          case 'assists': setAssists(a => a + amount); break;
-          case 'steals': setSteals(s => s + amount); break;
-          case 'blocks': setBlocks(b => b + amount); break;
-          case 'turnovers': setTurnovers(t => t + amount); break;
-          default: break;
-      }
-  }
+        switch (selectedStat) {
+            case 'points': setPoints(p => p + amount); break;
+            case 'rebounds': setRebounds(r => r + amount); break;
+            case 'assists': setAssists(a => a + amount); break;
+            case 'steals': setSteals(s => s + amount); break;
+            case 'blocks': setBlocks(b => b + amount); break;
+            case 'turnovers': setTurnovers(t => t + amount); break;
+            default: break;
+        }
+
+        // Reset state
+        setSelectedStat('');
+        setPointAmount(1);
+        setClickPos(null);
+        setIsModalOpen(false);
+    };
 
   const TimerPrompt= (e) => {
       const customTime = prompt("Set game clock");
@@ -107,6 +114,27 @@ function App() {
         }
     }
 
+    const getPinColor = (statType) => {
+        switch (statType) {
+            case 'points': return 'red';
+            case 'rebounds': return 'blue';
+            case 'assists': return 'green';
+            case 'steals': return 'orange';
+            case 'blocks': return 'purple';
+            case 'turnovers': return 'black';
+            default: return 'gray';
+        }
+    };
+
+    const legendDot = (color) => ({
+        display: 'inline-block',
+        width: '12px',
+        height: '12px',
+        backgroundColor: color,
+        borderRadius: '50%',
+        marginRight: '8px',
+    });
+
     return (
       <div>
           <h2>Game - {formatDate(date)}</h2>
@@ -122,7 +150,27 @@ function App() {
           </div>
           <button onClick={changeHalf}>{isHalf ? "Change to quarters" : "Change to halves"}</button>
           <div style={{ display: 'flex', height: '500px' }}>
-              <div style={{ flex: 1, position: 'relative' }} onClick={handleCourtClick}>
+              <div style={{ width: '200px', padding: '20px' }}>
+                  <h4>Legend:</h4>
+                  <ul style={{ listStyle: 'none', padding: 0 }}>
+                      <li><span style={legendDot('red')}></span> Points</li>
+                      <li><span style={legendDot('blue')}></span> Rebounds</li>
+                      <li><span style={legendDot('green')}></span> Assists</li>
+                      <li><span style={legendDot('orange')}></span> Steals</li>
+                      <li><span style={legendDot('purple')}></span> Blocks</li>
+                      <li><span style={legendDot('black')}></span> Turnovers</li>
+                  </ul>
+              </div>
+              <div
+                  style={{ flex: 1, position: 'relative' }}
+                  onClick={(e) => {
+                      const court = e.currentTarget.getBoundingClientRect();
+                      const x = ((e.clientX - court.left) / court.width) * 100;
+                      const y = ((e.clientY - court.top) / court.height) * 100;
+                      setClickPos({ x, y });
+                      setIsModalOpen(true);
+                  }}
+              >
                   <img
                       src="court.png"
                       alt="court"
@@ -136,7 +184,7 @@ function App() {
                               top: `${pin.y}%`,
                               left: `${pin.x}%`,
                               transform: 'translate(-50%, -50%)',
-                              background: 'red',
+                              background: getPinColor(pin.statType), // 🔸 assign dynamic color
                               borderRadius: '50%',
                               width: '10px',
                               height: '10px'
@@ -144,6 +192,42 @@ function App() {
                           title={`${pin.statType}: ${pin.amount}`}
                       />
                   ))}
+                  <EventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+                      <div style={{ color: 'black' }}>
+                          <h2>Record Event</h2>
+
+                          <div>
+                              <div style={{ marginTop: '10px' }}>
+                                  <label htmlFor="statSelect">Select Stat Type:</label>
+                                  <select
+                                      id="statSelect"
+                                      value={selectedStat}
+                                      onChange={(e) => setSelectedStat(e.target.value)}
+                                      style={{ display: 'block', marginTop: '5px', padding: '5px' }}
+                                  >
+                                      <option value="">-- Choose stat --</option>
+                                      <option value="points">Points</option>
+                                      <option value="rebounds">Rebound</option>
+                                      <option value="assists">Assist</option>
+                                      <option value="steals">Steal</option>
+                                      <option value="blocks">Block</option>
+                                      <option value="turnovers">Turnover</option>
+                                  </select>
+                                  {selectedStat === 'points' && (
+                                      <div style={{ marginTop: '10px' }}>
+                                          <p>Points Scored:</p>
+                                          <button onClick={() => setPointAmount(p => Math.max(1, p - 1))}>-</button>
+                                          <span style={{ margin: '0 10px' }}>{pointAmount}</span>
+                                          <button onClick={() => setPointAmount(p => Math.min(3, p + 1))}>+</button>
+                                      </div>
+                                  )}
+                              </div>
+                              <div style={{ marginTop: '20px' }}>
+                                  <button onClick={handleConfirmEvent}>Confirm</button>
+                              </div>
+                          </div>
+                      </div>
+                  </EventModal>
               </div>
               <div style={{ width: '200px', padding: '20px' }}>
                   <p>Points: {points}</p>
@@ -156,7 +240,7 @@ function App() {
                   <ul style={{maxHeight: '300px', overflowY: 'auto'}}>
                     {pins.map((pin, index) => (
                         <li key={index}>
-                            {pin.statType} (+{pin.amount})
+                            {pin.statType} (+{pin.amount}) - {formatTime(pin.time)} - {isHalf ? `Half ${pin.half}` : `Q${pin.half}`}
                         </li>
                       ))}
                   </ul>

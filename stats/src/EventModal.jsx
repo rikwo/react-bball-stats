@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 const modalRoot = document.getElementById('modal-root');
 
 function EventModal({ isOpen, onClose, children }) {
+    const modalRef = useRef();
+
     useEffect(() => {
         const handleEsc = (e) => {
             if (e.key === 'Escape') onClose();
@@ -45,10 +47,12 @@ const styles = {
     modal: {
         background: 'white', padding: '20px', borderRadius: '8px', minWidth: '300px',
         position: 'relative',
+        color: 'black',
     },
     closeBtn: {
         position: 'absolute', top: '10px', right: '10px',
     }
+
 };
 
 export default EventModal;
